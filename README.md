@@ -32,3 +32,4 @@ Training data: 40 annotated materials science papers using a few-shot prompting 
 Paste any materials science sentence into the input box and click Extract Entities.
 
 Example input:
+Solvothermal synthesis of ZIF-8 MOF at 298 K shows high CO2 adsorption capacity of 4.5 mmol/g.
