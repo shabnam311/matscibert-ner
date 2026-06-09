@@ -1,77 +1,44 @@
 import gradio as gr
-import torch
-from transformers import AutoTokenizer, AutoModelForTokenClassification
+from transformers import pipeline
 
 MODEL_PATH = "./model"
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForTokenClassification.from_pretrained(MODEL_PATH)
-model.eval()
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
-
-ID2TAG = {
-    0: "O-Material_composite", 1: "B-Material_composite", 2: "I-Material_composite",
-    3: "O-Process", 4: "B-Process", 5: "I-Process",
-    6: "O-Condition", 7: "B-Condition", 8: "I-Condition",
-    9: "O-Property_value", 10: "B-Property_value", 11: "I-Property_value"
-}
-ALLOWED_TYPES = ["Material_composite", "Process", "Property_value", "Condition"]
+try:
+    ner_pipe = pipeline("token-classification", model=MODEL_PATH, aggregation_strategy="simple")
+except Exception as e:
+    ner_pipe = None
+    startup_error = str(e)
 
 def extract_entities(text):
-    tokens = text.strip().split()
-    encoded = tokenizer(tokens, is_split_into_words=True, return_tensors="pt",
-                        truncation=True, max_length=512)
-    word_ids = encoded.word_ids()
-    input_ids = encoded["input_ids"].to(device)
-    attention_mask = encoded["attention_mask"].to(device)
+    if ner_pipe is None:
+        return f"**RUNTIME ERROR LOADING MODEL:**\n{startup_error}"
+        
+    try:
+        entities = ner_pipe(text)
+        if not entities:
+            return "No entities found."
 
-    with torch.no_grad():
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        result = ""
+        grouped = {}
+        for ent in entities:
+            # entity group is like "Material_composite"
+            typ = ent.get('entity_group', '')
+            word = ent.get('word', '').strip()
+            if word and typ:
+                grouped.setdefault(typ, []).append(word)
 
-    predictions = torch.argmax(outputs.logits, dim=-1).squeeze().cpu().numpy()
+        if not grouped:
+            return "No entities found."
 
-    entities = []
-    current_entity = ""
-    current_type = ""
-    previous_word_idx = None
+        for typ, ents in grouped.items():
+            result += f"**{typ}**\n"
+            for e in ents:
+                result += f"  • {e}\n"
+            result += "\n"
 
-    for i, word_idx in enumerate(word_ids):
-        if word_idx is None or word_idx == previous_word_idx:
-            continue
-        label = ID2TAG[predictions[i]]
-        if label.startswith("B-"):
-            if current_entity and current_type in ALLOWED_TYPES:
-                entities.append((current_entity.strip(), current_type))
-            current_entity = tokens[word_idx]
-            current_type = label.split("-")[1]
-        elif label.startswith("I-") and current_type == label.split("-")[1]:
-            current_entity += " " + tokens[word_idx]
-        else:
-            if current_entity and current_type in ALLOWED_TYPES:
-                entities.append((current_entity.strip(), current_type))
-            current_entity = ""
-            current_type = ""
-        previous_word_idx = word_idx
-
-    if current_entity and current_type in ALLOWED_TYPES:
-        entities.append((current_entity.strip(), current_type))
-
-    if not entities:
-        return "No entities found."
-
-    result = ""
-    grouped = {}
-    for ent, typ in entities:
-        grouped.setdefault(typ, []).append(ent)
-
-    for typ, ents in grouped.items():
-        result += f"**{typ}**\n"
-        for e in ents:
-            result += f"  • {e}\n"
-        result += "\n"
-
-    return result.strip()
+        return result.strip()
+    except Exception as e:
+        return f"**PREDICTION ERROR:**\n{str(e)}"
 
 demo = gr.Interface(
     fn=extract_entities,
@@ -85,4 +52,4 @@ demo = gr.Interface(
     description="Extracts Materials, Processes, Conditions, and Properties from scientific text.",
 )
 
-demo.launch(allow_origins=["*"])
+demo.launch()
