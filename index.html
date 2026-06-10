@@ -160,10 +160,7 @@ footer{padding:1.5rem 0;border-top:1px solid var(--line);display:flex;align-item
       <h1 class="hero-title">Extract <em>structured knowledge</em><br>from scientific text</h1>
       <p class="hero-desc">A fine-tuned MatSciBERT model trained on materials science literature. Identifies composites, synthesis processes, experimental conditions, and measured properties from abstracts and sentences.</p>
     </div>
-    <div class="hero-right">
-      <div class="hero-stat">Papers trained on</div>
-      <div class="hero-stat-val">40 <span>papers</span></div>
-    </div>
+
   </section>
 
   <div class="type-bar">
@@ -233,10 +230,7 @@ footer{padding:1.5rem 0;border-top:1px solid var(--line);display:flex;align-item
       <div class="about-lbl">Model</div>
       <div class="about-val">Fine-tuned <strong>MatSciBERT</strong> — a domain-specific BERT pre-trained on materials science literature. Adapted for token classification with BIO tagging over 4 entity types.</div>
     </div>
-    <div class="about-block" id="model">
-      <div class="about-lbl">Training</div>
-      <div class="about-val">Trained on <strong>40 annotated papers</strong> from materials science journals. Few-shot strategy used to maximise performance with limited labelled data.</div>
-    </div>
+
     <div class="about-block">
       <div class="about-lbl">Architecture</div>
       <div class="about-val"><strong>AutoModelForTokenClassification</strong> with a linear classification head. BIO tagging scheme. Max sequence length 512 tokens. 4 entity classes → 12 label IDs.</div>
