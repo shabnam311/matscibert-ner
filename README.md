@@ -1,3 +1,11 @@
+---
+title: MatSciBERT NER
+emoji: 🔬
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
 # MatSciBERT NER UI
 This repository contains the beautiful frontend UI and the Gradio backend code for the **MatSciBERT Named Entity Recognition** model.
 
