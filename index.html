@@ -191,6 +191,11 @@ footer{padding:1.5rem 0;border-top:1px solid var(--line);display:flex;align-item
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Extract Entities
           </button>
+          <button class="btn-sec" onclick="document.getElementById('file-upload').click()" style="display:flex;align-items:center;">
+             <svg style="margin-right:0.4rem" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+             Upload Doc
+          </button>
+          <input type="file" id="file-upload" style="display:none" accept=".txt,.pdf,.docx" onchange="uploadFile(event)">
           <button class="btn-sec" onclick="clearAll()">Clear</button>
           <span class="char-ct" id="char-ct">0 chars</span>
         </div>
@@ -312,6 +317,8 @@ function parseResult(raw) {
   return result;
 }
 
+const API_URL = "https://shabuuuuuuuuuuu-matscibert-ner.hf.space/api";
+
 async function run() {
   const text = inp.value.trim();
   if (!text) { toast('Please enter some text first'); return; }
@@ -328,17 +335,67 @@ async function run() {
   document.getElementById('res-count').style.display = 'none';
 
   try {
-    const { Client } = await import("https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js");
-    const client = await Client.connect("Shabuuuuuuuuuuu/matscibert-ner");
-    const result = await client.predict("/extract_entities", [text]);
-    const raw = result.data[0];
-    const entities = parseResult(raw);
+    const res = await fetch(`${API_URL}/extract_text`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text })
+    });
+    
+    if (!res.ok) throw new Error("Server returned " + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    
+    const entities = parseResult(data.result);
     render(text, entities);
   } catch (err) {
     document.getElementById('res-body').innerHTML = `<div class="empty-state"><p>Request failed \u2014 see console</p></div>`;
     console.error(err);
+    toast("Error connecting to Hugging Face API");
   } finally {
     btn.disabled = false;
+  }
+}
+
+async function uploadFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  // Reset the input so the same file can be uploaded again if needed
+  e.target.value = '';
+
+  document.getElementById('res-body').innerHTML = `
+    <div class="loading-state">
+      <div class="ring"></div>
+      <p>Parsing document and running inference\u2026</p>
+    </div>`;
+  document.getElementById('annot-panel').style.display = 'none';
+  document.getElementById('res-count').style.display = 'none';
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch(`${API_URL}/extract_file`, {
+      method: "POST",
+      body: formData
+    });
+    
+    if (!res.ok) throw new Error("Server returned " + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    
+    // Update the textarea with the extracted text
+    inp.value = data.text;
+    document.getElementById('char-ct').textContent = inp.value.length + ' chars';
+    
+    // Render entities
+    const entities = parseResult(data.result);
+    render(data.text, entities);
+    toast("Document successfully processed!");
+  } catch (err) {
+    document.getElementById('res-body').innerHTML = `<div class="empty-state"><p>Request failed \u2014 see console</p></div>`;
+    console.error(err);
+    toast(err.message || "Error processing document");
   }
 }
 
