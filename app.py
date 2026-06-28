@@ -25,8 +25,8 @@ try:
     if os.path.exists(MODEL_PATH):
         ner_pipe = pipeline("token-classification", model=MODEL_PATH, aggregation_strategy="simple")
     else:
-        # Fallback to the hub if model isn't downloaded locally
-        ner_pipe = pipeline("token-classification", model="m3rg-iitd/matscibert", aggregation_strategy="simple")
+        ner_pipe = None
+        startup_error = "Fine-tuned model not found in ./model directory."
 except Exception as e:
     ner_pipe = None
     startup_error = str(e)
