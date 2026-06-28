@@ -37,15 +37,28 @@ class TextRequest(BaseModel):
 def parse_entities(entities_list):
     grouped = {}
     for ent in entities_list:
-        typ = ent.get('entity_group', '')
+        typ = ent.get('entity_group', '').upper()
         word = ent.get('word', '').strip()
-        if word and typ:
-            grouped.setdefault(typ, []).append(word)
+        if not word or not typ: continue
+        
+        if 'MAT' in typ or 'COMP' in typ:
+            mapped_typ = 'Material_composite'
+        elif 'PROC' in typ or 'METH' in typ:
+            mapped_typ = 'Process'
+        elif 'COND' in typ or 'TEMP' in typ:
+            mapped_typ = 'Condition'
+        elif 'PROP' in typ or 'VAL' in typ:
+            mapped_typ = 'Property_value'
+        elif 'LABEL_0' in typ or 'LABEL_1' in typ or 'LABEL_2' in typ or 'LABEL_3' in typ:
+            # Fallback for base models
+            mapping = {'LABEL_0': 'Material_composite', 'LABEL_1': 'Process', 'LABEL_2': 'Condition', 'LABEL_3': 'Property_value'}
+            mapped_typ = mapping.get(typ, 'Material_composite')
+        else:
+            # If we don't know what it is, just guess material
+            mapped_typ = 'Material_composite'
+            
+        grouped.setdefault(mapped_typ, []).append(word)
     
-    # Format exactly like the frontend expects:
-    # **Material_composite**
-    #   • word1
-    #   • word2
     result = ""
     if not grouped:
         return ""
